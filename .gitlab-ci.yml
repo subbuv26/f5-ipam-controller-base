@@ -36,7 +36,6 @@ Build-Image:
         export LICENSE_STRICT=false
       fi
     - export CLEAN_BUILD=true
-    - export BASE_OS=rhel
     - make prod
     - echo "export BUILD_IMG_TAG=$BUILD_IMG_TAG;" >> shared-vars.sh
     - |

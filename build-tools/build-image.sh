@@ -35,9 +35,9 @@ if $CLEAN_BUILD; then
 fi
 
 if [[ $BASE_OS == "rhel" ]]; then
-  docker build $PULL_FLAG --force-rm ${NO_CACHE_ARGS} \
+  docker build --pull --force-rm ${NO_CACHE_ARGS} \
   -t $BUILD_IMG_TAG \
-  -f $WKDIR/f5-ipam-ctlr/build-tools/$DOCKERFILE \
+  -f $WKDIR/f5-ipam-ctlr/build-tools/Dockerfile-rhel-multistage \
   --build-arg COVERALLS_TOKEN=${COVERALLS_TOKEN:-false} \
   --build-arg RUN_TESTS=${RUN_TESTS:-false} \
   --build-arg BUILD_VERSION=${BUILD_VERSION} \
