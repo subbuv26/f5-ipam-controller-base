@@ -1,7 +1,3 @@
-language: go
-sudo: required
-services:
-  - docker
 git:
   # don't limit git clone depth
   depth: false
@@ -15,7 +11,7 @@ script:
   - set -e
   - docker run --rm -it -v `pwd`:`pwd` -w `pwd` node:6.11.0-slim build-tools/schema-tests.sh
   - if [ "$DOCKER_NAMESPACE" == "" ]; then DOCKER_NAMESPACE="local"; fi
-  - BASE_PUSH_TARGET="$DOCKER_NAMESPACE/f5-ipam-ctlr"
+  - BASE_PUSH_TARGET="$DOCKER_NAMESPACE/f5-ipam-controller"
   - |
     if [ "$DOCKER_P" == "" -o "$DOCKER_U" == "" -o $DOCKER_NAMESPACE == "" ]; then
       echo "[INFO] Docker user, password, or namespace vars absent from travis-ci."
@@ -69,10 +65,10 @@ deploy:
     skip_cleanup: true
     on:
       all_branches: true
-      repo: F5Networks/f5-ipam-ctlr
+      repo: F5Networks/f5-ipam-controller
       condition: $TRAVIS_BRANCH == *"-stable" || "$TRAVIS_BRANCH" =~ ^v[0-9]+\.[0-9]+\.[0-9]*
     script:
-      - ./build-tools/deploy-docs.sh publish-product-docs-to-prod connectors/f5-ipam-ctlr $CTLR_VERSION
+      - ./build-tools/deploy-docs.sh publish-product-docs-to-prod connectors/f5-ipam-controller $CTLR_VERSION
 
 notifications:
   slack:

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# expects node:6.11.0-slim and f5-ipam-ctlr as volume
+# expects node:6.11.0-slim and f5-ipam-controller as volume
 
 set -e
 

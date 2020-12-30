@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 	&& rm -rf /var/lib/apt/lists/*
 
 ENV GOLANG_VERSION 1.15
-ENV REPO_NAME f5-ipam-ctlr
+ENV REPO_NAME f5-ipam-controller
 
 # licensee dependencies
 RUN apt-get update && apt-get install -y ruby bundler cmake pkg-config git libssl-dev libpng-dev

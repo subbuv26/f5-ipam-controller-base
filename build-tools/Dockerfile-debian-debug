@@ -23,10 +23,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && echo "{\"version\": \"${VERSION_INFO}\", \"build\": \"${BUILD_INFO}\"}" \
       > $APPPATH/VERSION_BUILD.json
 
-COPY --from=f5-ipam-ctlr-builder "/go/out/bin/f5-ipam-ctlr" $APPPATH/bin
+COPY --from=f5-ipam-controller-builder "/go/out/bin/f5-ipam-controller" $APPPATH/bin
 COPY --from=debug-builder /go/bin/dlv /app/bin
 
 USER ctlr
 EXPOSE 40000
 # Run the run application in the projects bin directory.
-CMD [ "/app/bin/f5-ipam-ctlr" ]
+CMD [ "/app/bin/f5-ipam-controller" ]

@@ -8,7 +8,7 @@ Build-Image:
 
   script:
     - if [ "$DOCKER_NAMESPACE" == "" ]; then DOCKER_NAMESPACE="local"; fi
-    - export BASE_PUSH_TARGET="$CI_REGISTRY/$DOCKER_NAMESPACE/f5-ipam-ctlr"
+    - export BASE_PUSH_TARGET="$CI_REGISTRY/$DOCKER_NAMESPACE/f5-ipam-controller"
     - |
       if [ "$CI_REGISTRY_PASSWORD" == "" -o "$CI_REGISTRY_USER" == "" -o $DOCKER_NAMESPACE == "" -o $CI_REGISTRY == "" ]; then
         echo "[INFO] Docker registry, user, password, or namespace vars absent from Gitlab environment variable."

@@ -1,4 +1,4 @@
-PACKAGE  := github.com/F5Networks/f5-ipam-ctlr
+PACKAGE  := github.com/subbuv26/f5-ipam-controller
 
 BASE     := $(GOPATH)/src/$(PACKAGE)
 GOOS     = $(shell go env GOOS)

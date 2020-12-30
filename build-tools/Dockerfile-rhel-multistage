@@ -64,18 +64,18 @@ RUN go get github.com/wadey/gocovmerge && \
 	go get github.com/mattn/goveralls && \
 	go get github.com/onsi/ginkgo/ginkgo && \
 	go get github.com/onsi/gomega && \
-	/bin/bash -ex $WORKDIR/f5-ipam-ctlr/build-tools/rel-build.sh
+	/bin/bash -ex $WORKDIR/f5-ipam-controller/build-tools/rel-build.sh
 
 
 FROM registry.redhat.io/ubi7/ubi-minimal as final
 
-LABEL name="f5networks/f5-ipam-ctlr" \
+LABEL name="f5networks/f5-ipam-controller" \
       vendor="F5 Networks" \
       # version - should be passed in via docker build
-      url="http://clouddocs.f5.com/products/connectors/f5-ipam-ctlr/latest/" \
+      url="http://clouddocs.f5.com/products/connectors/f5-ipam-controller/latest/" \
       summary="F5 BIG-IP Controller for Kubernetes" \
       description="Manages F5 BIG-IP from Kubernetes" \
-      run='docker run --name ${NAME} ${IMAGE} /app/bin/f5-ipam-ctlr' \
+      run='docker run --name ${NAME} ${IMAGE} /app/bin/f5-ipam-controller' \
       io.k8s.description="Manages F5 BIG-IP from Kubernetes" \
       io.k8s.display-name="F5 BIG-IP Controller for Kubernetes" \
       io.openshift.expose-services="" \
@@ -106,9 +106,9 @@ RUN microdnf --enablerepo=rhel-7-server-rpms --enablerepo=rhel-7-server-optional
     && echo "{\"version\": \"${VERSION_INFO}\", \"build\": \"${BUILD_INFO}\"}" \
           > $APPPATH/VERSION_BUILD.json
 
-COPY --from=rhel-builder "/go/out/bin/f5-ipam-ctlr" $APPPATH/bin
+COPY --from=rhel-builder "/go/out/bin/f5-ipam-controller" $APPPATH/bin
 
 USER ctlr
 
 # Run the run application in the projects bin directory.
-CMD [ "/app/bin/k8s-bigip-ctlr" ]
+CMD [ "/app/bin/f5-ipam-controller" ]
