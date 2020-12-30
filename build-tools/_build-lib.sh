@@ -17,12 +17,12 @@
 set -e
 
 # CI Should set these variables
-: ${IMG_TAG:=f5-ipam-ctlr:latest}
-: ${BUILD_IMG_TAG:=f5-ipam-ctlr-devel:latest}
+: ${IMG_TAG:=f5-ipam-controller:latest}
+: ${BUILD_IMG_TAG:=f5-ipam-controller-devel:latest}
 : ${BUILD_VARIANT:=release}
 : ${BUILD_VARIANT_FLAGS:=}
 
-PKGIMPORT="github.com/F5Networks/f5-ipam-ctlr"
+PKGIMPORT="github.com/F5Networks/f5-ipam-controller"
 
 
 if [ -z $BUILD_VERSION ]; then
