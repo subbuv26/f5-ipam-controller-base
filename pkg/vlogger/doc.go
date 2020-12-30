@@ -118,8 +118,8 @@ to the console:
   package main
 
   import (
-    log  "github.com/F5Networks/k8s-bigip-ctlr/pkg/vlogger"
-    "github.com/F5Networks/k8s-bigip-ctlr/pkg/vlogger/console"
+    log  "github.com/subbuv26/f5-ipam-controller/pkg/vlogger"
+    "github.com/subbuv26/f5-ipam-controller/pkg/vlogger/console"
 
   func init() {
     // Log all messages to the user's console

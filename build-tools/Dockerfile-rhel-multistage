@@ -111,4 +111,4 @@ COPY --from=rhel-builder "/go/out/bin/f5-ipam-controller" $APPPATH/bin
 USER ctlr
 
 # Run the run application in the projects bin directory.
-CMD [ "/app/bin/k8s-bigip-ctlr" ]
+CMD [ "/app/bin/f5-ipam-controller" ]
