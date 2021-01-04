@@ -19,7 +19,6 @@ limitations under the License.
 package v1
 
 import (
-	"context"
 	time "time"
 
 	ficv1 "github.com/subbuv26/f5-ipam-controller/pkg/ipamapis/apis/fic/v1"
@@ -62,13 +61,13 @@ func NewFilteredF5IPAMInformer(client versioned.Interface, namespace string, res
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.K8sV1().F5IPAMs(namespace).List(context.TODO(), options)
+				return client.K8sV1().F5IPAMs(namespace).List(options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.K8sV1().F5IPAMs(namespace).Watch(context.TODO(), options)
+				return client.K8sV1().F5IPAMs(namespace).Watch(options)
 			},
 		},
 		&ficv1.F5IPAM{},
