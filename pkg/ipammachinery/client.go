@@ -1,8 +1,6 @@
 package ipammachinery
 
 import (
-	"context"
-
 	v1 "github.com/subbuv26/f5-ipam-controller/pkg/ipamapis/apis/fic/v1"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -36,35 +34,31 @@ type ipamclient struct {
 
 func (c *ipamclient) Create(obj *v1.F5IPAM) (*v1.F5IPAM, error) {
 	result := &v1.F5IPAM{}
-	ctx := context.Background()
 	err := c.client.Post().
 		Namespace(c.ns).Resource("f5ipams").
-		Body(obj).Do(ctx).Into(result)
+		Body(obj).Do().Into(result)
 	return result, err
 }
 
 func (c *ipamclient) Update(obj *v1.F5IPAM) (*v1.F5IPAM, error) {
 	result := &v1.F5IPAM{}
-	ctx := context.Background()
 	err := c.client.Put().
 		Namespace(c.ns).Resource("f5ipams").
-		Body(obj).Do(ctx).Into(result)
+		Body(obj).Do().Into(result)
 	return result, err
 }
 
 func (c *ipamclient) Delete(name string, options *meta_v1.DeleteOptions) error {
-	ctx := context.Background()
 	return c.client.Delete().
 		Namespace(c.ns).Resource("f5ipams").
-		Name(name).Body(options).Do(ctx).Error()
+		Name(name).Body(options).Do().Error()
 }
 
 func (c *ipamclient) Get(name string) (*v1.F5IPAM, error) {
 	result := &v1.F5IPAM{}
-	ctx := context.Background()
 	err := c.client.Get().
 		Namespace(c.ns).Resource("f5ipams").
-		Name(name).Do(ctx).Into(result)
+		Name(name).Do().Into(result)
 	return result, err
 }
 

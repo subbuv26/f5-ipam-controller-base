@@ -17,7 +17,6 @@
 package ipammachinery
 
 import (
-	"context"
 	"fmt"
 	"time"
 
@@ -147,9 +146,7 @@ func CreateCRD(clientset apiextension.Interface) error {
 			},
 		},
 	}
-	ctx := context.Background()
-	var opts meta_v1.CreateOptions
-	_, err := clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Create(ctx, crd, opts)
+	_, err := clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Create(crd)
 	if err != nil && apierrors.IsAlreadyExists(err) {
 		return nil
 	}
