@@ -22,6 +22,12 @@ VERSION_INFO=$(${CURDIR}/version-tool.py version)
 
 cp -rf $CURDIR/../../f5-ipam-controller $WKDIR/
 
+get_attributions(){
+  id=$(docker create $1)
+    docker cp $id:/go/out/bin/all_attributions.txt .
+    docker rm -v $id
+}
+
 NO_CACHE_ARGS=""
 if $CLEAN_BUILD; then
   NO_CACHE_ARGS="--no-cache"
@@ -43,6 +49,7 @@ if [[ $BASE_OS == "rhel" ]]; then
   --build-arg BUILD_VERSION=${BUILD_VERSION} \
   --build-arg BUILD_INFO=${BUILD_INFO} \
   --build-arg VERSION_INFO=${VERSION_INFO} \
+  --build-arg LICENSE=${LICENSE} \
   --label BUILD_STAMP=$BUILD_STAMP \
   ${VERSION_BUILD_ARGS} \
   $WKDIR
@@ -54,6 +61,7 @@ else
   --build-arg RUN_TESTS=${RUN_TESTS:-false} \
   --build-arg BUILD_VERSION=${BUILD_VERSION} \
   --build-arg BUILD_INFO=${BUILD_INFO} \
+  --build-arg LICENSE=${LICENSE} \
   --label BUILD_STAMP=$BUILD_STAMP \
   ${VERSION_BUILD_ARGS} \
   $WKDIR
@@ -77,13 +85,10 @@ else
     ${VERSION_BUILD_ARGS} \
     $WKDIR
   fi
+  if $LICENSE; then
+    get_attributions f5-ipam-controller-builder
+  fi
 fi
-
-# Licensee need this path to generate attributions
-vendor_dir="$CURDIR/../../f5-ipam-controller/vendor"
-. $CURDIR/attributions-generator.sh
-# Run the attributions and save the content to a local file.
-generate_attributions_licensee $vendor_dir > $WKDIR/f5-ipam-controller/all_attributions.txt
 
 rm -rf /tmp/docker-build.????
 

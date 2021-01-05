@@ -30,5 +30,10 @@ if [ $RUN_TESTS -eq 1 ]; then
     fi
 fi
 
-#Copying the build directory to volume
-#cp -rf $BUILDDIR /build/mnt/
+if $LICENSE; then
+  # Licensee need this path to generate attributions
+  vendor_dir="$CURDIR/../../f5-ipam-controller/vendor"
+  . $CURDIR/attributions-generator.sh
+  # Run the attributions and save the content to a local file.
+  generate_attributions_licensee $vendor_dir > /go/out/bin/all_attributions.txt
+fi
