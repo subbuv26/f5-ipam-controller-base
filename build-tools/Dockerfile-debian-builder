@@ -18,8 +18,7 @@ ENV GOLANG_VERSION 1.15
 ENV REPO_NAME f5-ipam-controller
 
 # licensee dependencies
-RUN apt-get update && apt-get install -y ruby bundler cmake pkg-config git libssl-dev libpng-dev
-# RUN gem install licensee
+RUN apt-get update && apt-get install -y ruby bundler cmake pkg-config git libssl-dev libpng-dev && gem install licensee
 
 RUN set -eux; \
 	\
@@ -55,7 +54,7 @@ RUN set -eux; \
 
 ENV GOPATH /go
 ENV PATH $GOPATH/bin:/usr/local/go/bin:$PATH
-ENV BASE_PATH "$GOPATH/src/github.com/F5Networks"
+ENV BASE_PATH "$GOPATH/src/github.com/subbuv26"
 RUN mkdir -p "$GOPATH/src" "$BASE_PATH" "$GOPATH/bin" && chmod -R 777 "$GOPATH"
 WORKDIR "$BASE_PATH/$REPO_NAME"
 
@@ -63,18 +62,13 @@ ARG RUN_TESTS=false
 ARG COVERALLS_TOKEN
 ARG BUILD_VERSION
 ARG BUILD_INFO
+ARG LICENSE
 
 # Copy Source code
 COPY ./$REPO_NAME $BASE_PATH/$REPO_NAME
 
-RUN go get github.com/wadey/gocovmerge && \
-	go get golang.org/x/tools/cmd/cover && \
-	go get github.com/mattn/goveralls && \
-	go get github.com/onsi/ginkgo/ginkgo && \
-	go get github.com/onsi/gomega
-
 COPY --from=gosu/assets /opt/gosu /opt/gosu
-#RUN set -x \
-#    && /opt/gosu/gosu.install.sh \
-#    && rm -fr /opt/gosu \
-#    && /bin/bash -ex $BASE_PATH/$REPO_NAME/build-tools/rel-build.sh
+RUN set -x \
+    && /opt/gosu/gosu.install.sh \
+    && rm -fr /opt/gosu \
+    && /bin/bash -ex $BASE_PATH/$REPO_NAME/build-tools/rel-build.sh

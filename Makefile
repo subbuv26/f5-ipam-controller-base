@@ -14,14 +14,8 @@ GO_BUILD_FLAGS=-v -ldflags "-extldflags \"-static\" -X main.version=$(BUILD_VERS
 # Allow users to pass in BASE_OS build options (debian or rhel)
 BASE_OS ?= debian
 
-# This is for builds not triggered through CI
-LICENSE_STRICT ?= false
-
-# If strict license approval check is desired, pass the corresponding flag 
-# to Attributions Generator on command line
-ifeq ($(LICENSE_STRICT), true)
-	LIC_FLAG=--al release
-endif
+# This is for generating licences for vendor packages. Set the environment variable to true to generate the all_attributions.txt
+LICENSE ?= false
 
 all: local-build
 
@@ -34,9 +28,8 @@ verify: fmt vet
 docs: _docs
 
 clean:
-	rm -rf _docker_workspace
-	rm -rf _build
-	docker volume rm -f workspace_vol
+	docker rmi f5-ipam-controller-devel || true
+	docker rmi f5-ipam-controller-debug || true
 	@echo "Did not clean local go workspace"
 
 info:
@@ -74,17 +67,22 @@ pre-build:
 
 prod-build: pre-build
 	@echo "Building with minimal instrumentation..."
-	RUN_TESTS=1 BASE_OS=$(BASE_OS) BASE_OS=$(BASE_OS) $(CURDIR)/build-tools/build-image.sh
+	LICENSE=$(LICENSE) RUN_TESTS=1 BASE_OS=$(BASE_OS) BASE_OS=$(BASE_OS) $(CURDIR)/build-tools/build-image.sh
 
 prod-quick: prod-build-quick
 
 prod-build-quick: pre-build
-	@echo "Building with running tests..."
-	RUN_TESTS=0 BASE_OS=$(BASE_OS) $(CURDIR)/build-tools/build-image.sh
+	@echo "Building without running tests..."
+	LICENSE=$(LICENSE) RUN_TESTS=0 BASE_OS=$(BASE_OS) $(CURDIR)/build-tools/build-image.sh
 
 debug: pre-build
 	@echo "Building with debug support..."
-	DEBUG=0 RUN_TESTS=0 BASE_OS=$(BASE_OS) $(CURDIR)/build-tools/build-image.sh
+	LICENSE=$(LICENSE) DEBUG=0 RUN_TESTS=0 BASE_OS=$(BASE_OS) $(CURDIR)/build-tools/build-image.sh
+
+
+dev-licences: pre-build
+	@echo "Building without running tests..."
+	LICENSE=true RUN_TESTS=0 BASE_OS=$(BASE_OS) $(CURDIR)/build-tools/build-image.sh
 
 fmt:
 	@echo "Enforcing code formatting using 'go fmt'..."

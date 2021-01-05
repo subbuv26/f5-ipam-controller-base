@@ -31,7 +31,7 @@ RUN REPOLIST=rhel-8-for-x86_64-baseos-rpms,rhel-8-for-x86_64-supplementary-rpms,
 
 ENV GOPATH /go
 ENV PATH $GOPATH/bin:/usr/local/go/bin:$PATH
-ENV BASE_PATH "$GOPATH/github.com/F5Networks"
+ENV BASE_PATH "$GOPATH/github.com/subbuv26"
 RUN mkdir -p "$GOPATH/src" "$BASE_PATH" "$GOPATH/bin" && chmod -R 777 "$GOPATH"
 WORKDIR "$BASE_PATH/$REPO_NAME"
 
@@ -39,6 +39,7 @@ ARG RUN_TESTS=false
 ARG COVERALLS_TOKEN
 ARG BUILD_VERSION
 ARG BUILD_INFO
+ARG LICENSE
 
 # install gosu
 # https://github.com/tianon/gosu/blob/master/INSTALL.md#from-centos
@@ -59,12 +60,7 @@ RUN set -ex && \
 # Copy Source code
 COPY ./$REPO_NAME $BASE_PATH
 
-RUN go get github.com/wadey/gocovmerge && \
-	go get golang.org/x/tools/cmd/cover && \
-	go get github.com/mattn/goveralls && \
-	go get github.com/onsi/ginkgo/ginkgo && \
-	go get github.com/onsi/gomega && \
-	/bin/bash -ex $WORKDIR/f5-ipam-controller/build-tools/rel-build.sh
+RUN /bin/bash -ex $WORKDIR/f5-ipam-controller/build-tools/rel-build.sh
 
 
 FROM registry.redhat.io/ubi7/ubi-minimal as final
