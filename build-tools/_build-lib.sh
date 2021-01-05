@@ -22,7 +22,7 @@ set -e
 : ${BUILD_VARIANT:=release}
 : ${BUILD_VARIANT_FLAGS:=}
 
-PKGIMPORT="github.com/F5Networks/f5-ipam-controller"
+PKGIMPORT="github.com/subbuv26/f5-ipam-controller"
 
 
 if [ -z $BUILD_VERSION ]; then
@@ -127,7 +127,7 @@ gather_coverage() {
 	mkdir -p $BUILDDIR/coverage
 
   (
-    cd $WKDIR/src/github.com/F5Networks
+    cd $WKDIR/src/github.com/subbuv26
     gocovmerge `find . -name *.coverprofile` > coverage.out
     go tool cover -html=coverage.out -o coverage.html
     go tool cover -func=coverage.out
