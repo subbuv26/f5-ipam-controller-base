@@ -141,17 +141,20 @@ func main() {
 	mgr := manager.NewManager(mgrParams)
 	stopCh := make(chan struct{})
 
-	controller.NewController(
+	ctlr := controller.NewController(
 		controller.Spec{
 			Orchestrator: orcr,
 			Manager:      mgr,
 			StopCh:       stopCh,
 		},
 	)
+	ctlr.Run()
 
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 	sig := <-signals
+
+	ctlr.Stop()
 	log.Infof("Exiting - signal %v\n", sig)
 	close(stopCh)
 }

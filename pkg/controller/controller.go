@@ -61,3 +61,7 @@ func (ctlr *Controller) Run() {
 
 	go ctlr.runController()
 }
+
+func (ctlr *Controller) Stop() {
+	ctlr.Orchestrator.Stop()
+}

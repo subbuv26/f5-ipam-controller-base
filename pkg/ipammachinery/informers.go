@@ -20,8 +20,7 @@ import (
 	"fmt"
 	"time"
 
-	cisapiv1 "github.com/subbuv26/f5-ipam-controller/pkg/ipamapis/apis/fic/v1"
-	cisinfv1 "github.com/subbuv26/f5-ipam-controller/pkg/ipamapis/client/informers/externalversions/fic/v1"
+	ficInfV1 "github.com/subbuv26/f5-ipam-controller/pkg/ipamapis/client/informers/externalversions/fic/v1"
 	log "github.com/subbuv26/f5-ipam-controller/pkg/vlogger"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
@@ -32,13 +31,13 @@ func (ipamInfr *IPAMInformer) start() {
 	var cacheSyncs []cache.InformerSynced
 
 	if ipamInfr.ipamInformer != nil {
-		log.Infof("Starting IPAM Informer")
+		log.Infof("Starting IPAMClient Informer")
 		go ipamInfr.ipamInformer.Run(ipamInfr.stopCh)
 		cacheSyncs = append(cacheSyncs, ipamInfr.ipamInformer.HasSynced)
 	}
 
 	cache.WaitForNamedCacheSync(
-		"F5 CIS CRD Controller",
+		"F5 IPAMClient Controller",
 		ipamInfr.stopCh,
 		cacheSyncs...,
 	)
@@ -48,55 +47,56 @@ func (ipamInfr *IPAMInformer) stop() {
 	close(ipamInfr.stopCh)
 }
 
-func (ipamMgr *IPAM) watchingAllNamespaces() bool {
-	if 0 == len(ipamMgr.ipamInformers) {
+func (ipamCli *IPAMClient) watchingAllNamespaces() bool {
+	if 0 == len(ipamCli.ipamInformers) {
 		// Not watching any namespaces.
 		return false
 	}
-	_, watchingAll := ipamMgr.ipamInformers[""]
+	_, watchingAll := ipamCli.ipamInformers[""]
 	return watchingAll
 }
 
-func (ipamMgr *IPAM) addNamespacedInformer(
+func (ipamCli *IPAMClient) addNamespacedInformer(
 	namespace string,
+	eventHandlers *cache.ResourceEventHandlerFuncs,
 ) error {
-	if ipamMgr.watchingAllNamespaces() {
+	if ipamCli.watchingAllNamespaces() {
 		return fmt.Errorf(
 			"Cannot add additional namespaces when already watching all.")
 	}
-	if len(ipamMgr.ipamInformers) > 0 && "" == namespace {
+	if len(ipamCli.ipamInformers) > 0 && "" == namespace {
 		return fmt.Errorf(
 			"Cannot watch all namespaces when already watching specific ones.")
 	}
 	var crInf *IPAMInformer
 	var found bool
-	if crInf, found = ipamMgr.ipamInformers[namespace]; found {
+	if crInf, found = ipamCli.ipamInformers[namespace]; found {
 		return nil
 	}
-	crInf = ipamMgr.newNamespacedInformer(namespace)
-	ipamMgr.addEventHandlers(crInf)
-	ipamMgr.ipamInformers[namespace] = crInf
+	crInf = ipamCli.newNamespacedInformer(namespace)
+	ipamCli.addEventHandlers(crInf, eventHandlers)
+	ipamCli.ipamInformers[namespace] = crInf
 	return nil
 }
 
-func (ipamMgr *IPAM) newNamespacedInformer(
+func (ipamCli *IPAMClient) newNamespacedInformer(
 	namespace string,
 ) *IPAMInformer {
-	log.Debugf("Creating Informers for Namespace %v", namespace)
+	log.Debugf("[ipam] Creating Informers for Namespace %v", namespace)
 	everything := func(options *metav1.ListOptions) {
 		options.LabelSelector = ""
 	}
 
 	resyncPeriod := 0 * time.Second
-	//restClientv1 := ipamMgr.kubeClient.CoreV1().RESTClient()
+	// restClientv1 := ipamCli.kubeClient.CoreV1().RESTClient()
 
 	ipamInf := &IPAMInformer{
 		namespace: namespace,
 		stopCh:    make(chan struct{}),
 	}
 
-	ipamInf.ipamInformer = cisinfv1.NewFilteredF5IPAMInformer(
-		ipamMgr.kubeCRClient,
+	ipamInf.ipamInformer = ficInfV1.NewFilteredF5IPAMInformer(
+		ipamCli.kubeCRClient,
 		namespace,
 		resyncPeriod,
 		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
@@ -106,65 +106,23 @@ func (ipamMgr *IPAM) newNamespacedInformer(
 	return ipamInf
 }
 
-func (ipamMgr *IPAM) addEventHandlers(ipamInf *IPAMInformer) {
+func (ipamCli *IPAMClient) addEventHandlers(
+	ipamInf *IPAMInformer,
+	eventHandlers *cache.ResourceEventHandlerFuncs,
+) {
 	if ipamInf.ipamInformer != nil {
 		ipamInf.ipamInformer.AddEventHandler(
-			&cache.ResourceEventHandlerFuncs{
-				AddFunc:    func(obj interface{}) { ipamMgr.enqueueIPAM(obj) },
-				UpdateFunc: func(old, cur interface{}) { ipamMgr.enqueueUpdatedIPAM(old, cur) },
-				DeleteFunc: func(obj interface{}) { ipamMgr.enqueueDeletedIPAM(obj) },
-			},
+			eventHandlers,
 		)
 	}
 }
 
-func (ipamMgr *IPAM) getNamespacedInformer(
+func (ipamCli *IPAMClient) getNamespacedInformer(
 	namespace string,
 ) (*IPAMInformer, bool) {
-	if ipamMgr.watchingAllNamespaces() {
+	if ipamCli.watchingAllNamespaces() {
 		namespace = ""
 	}
-	ipamInf, found := ipamMgr.ipamInformers[namespace]
+	ipamInf, found := ipamCli.ipamInformers[namespace]
 	return ipamInf, found
-}
-
-func (ipamMgr *IPAM) enqueueIPAM(obj interface{}) {
-	vs := obj.(*cisapiv1.F5IPAM)
-	log.Debugf("Enqueueing IPAM: %v", vs)
-	key := &rqKey{
-		namespace: vs.ObjectMeta.Namespace,
-		kind:      F5ipam,
-		rscName:   vs.ObjectMeta.Name,
-		rsc:       obj,
-	}
-
-	ipamMgr.rscQueue.Add(key)
-}
-
-func (ipamMgr *IPAM) enqueueUpdatedIPAM(oldObj, newObj interface{}) {
-	oldIPAM := oldObj.(*cisapiv1.F5IPAM)
-	newIPAM := newObj.(*cisapiv1.F5IPAM)
-
-	log.Debugf("Enqueueing ipam: %v", newIPAM)
-	log.Debugf("Old ipam: %v", oldIPAM)
-	key := &rqKey{
-		namespace: newIPAM.ObjectMeta.Namespace,
-		kind:      F5ipam,
-		rscName:   newIPAM.ObjectMeta.Name,
-		rsc:       newObj,
-	}
-	ipamMgr.rscQueue.Add(key)
-}
-
-func (ipamMgr *IPAM) enqueueDeletedIPAM(obj interface{}) {
-	ipam := obj.(*cisapiv1.F5IPAM)
-	log.Debugf("Enqueueing ipam: %v", ipam)
-	key := &rqKey{
-		namespace: ipam.ObjectMeta.Namespace,
-		kind:      F5ipam,
-		rscName:   ipam.ObjectMeta.Name,
-		rsc:       obj,
-		rscDelete: true,
-	}
-	ipamMgr.rscQueue.Add(key)
 }
