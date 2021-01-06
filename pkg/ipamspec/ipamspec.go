@@ -6,8 +6,10 @@ const (
 )
 
 type IPAMRequest struct {
+	Metadata  interface{}
 	HostName  string
 	CIDR      string
+	IPAddr    string
 	Operation string
 }
 

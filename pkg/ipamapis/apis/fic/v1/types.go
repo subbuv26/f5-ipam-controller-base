@@ -18,7 +18,7 @@ type F5IPAM struct {
 }
 
 type F5IPAMSpec struct {
-	HostSpecs []HostSpec `json:"hostSpecs,omitempty"`
+	HostSpecs []*HostSpec `json:"hostSpecs,omitempty"`
 }
 
 type HostSpec struct {
@@ -27,11 +27,12 @@ type HostSpec struct {
 }
 
 type F5IPAMStatus struct {
-	IPStatus []IPSpec `json:"IPStatus,omitempty"`
+	IPStatus []*IPSpec `json:"IPStatus,omitempty"`
 }
 
 type IPSpec struct {
 	Host string `json:"host,omitempty"`
+	Cidr string `json:"cidr,omitempty"`
 	IP   string `json:"ip,omitempty"`
 }
 

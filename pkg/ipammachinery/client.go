@@ -9,62 +9,39 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-func (c *F5IPAMConfigV1Client) F5IPAMS(namespace string) F5IPAMConfigInterface {
-	return &ipamclient{
-		client: c.restClient,
-		ns:     namespace,
-	}
-}
-
-type F5IPAMConfigV1Client struct {
-	restClient rest.Interface
-}
-
-type F5IPAMConfigInterface interface {
-	Create(obj *v1.F5IPAM) (*v1.F5IPAM, error)
-	Update(obj *v1.F5IPAM) (*v1.F5IPAM, error)
-	Delete(name string, options *meta_v1.DeleteOptions) error
-	Get(name string) (*v1.F5IPAM, error)
-}
-
-type ipamclient struct {
-	client rest.Interface
-	ns     string
-}
-
-func (c *ipamclient) Create(obj *v1.F5IPAM) (*v1.F5IPAM, error) {
+func (ipamCli *IPAMClient) Create(namespace string, obj *v1.F5IPAM) (*v1.F5IPAM, error) {
 	result := &v1.F5IPAM{}
-	err := c.client.Post().
-		Namespace(c.ns).Resource("f5ipams").
+	err := ipamCli.restClient.Post().
+		Namespace(namespace).Resource("f5ipams").
 		Body(obj).Do().Into(result)
 	return result, err
 }
 
-func (c *ipamclient) Update(obj *v1.F5IPAM) (*v1.F5IPAM, error) {
+func (ipamCli *IPAMClient) Update(namespace string, obj *v1.F5IPAM) (*v1.F5IPAM, error) {
 	result := &v1.F5IPAM{}
-	err := c.client.Put().
-		Namespace(c.ns).Resource("f5ipams").
+	err := ipamCli.restClient.Put().
+		Namespace(namespace).Resource("f5ipams").
+		Name(obj.Name).
 		Body(obj).Do().Into(result)
 	return result, err
 }
 
-func (c *ipamclient) Delete(name string, options *meta_v1.DeleteOptions) error {
-	return c.client.Delete().
-		Namespace(c.ns).Resource("f5ipams").
+func (ipamCli *IPAMClient) Delete(namespace, name string, options *meta_v1.DeleteOptions) error {
+	return ipamCli.restClient.Delete().
+		Namespace(namespace).Resource("f5ipams").
 		Name(name).Body(options).Do().Error()
 }
 
-func (c *ipamclient) Get(name string) (*v1.F5IPAM, error) {
+func (ipamCli *IPAMClient) Get(namespace, name string) (*v1.F5IPAM, error) {
 	result := &v1.F5IPAM{}
-	err := c.client.Get().
-		Namespace(c.ns).Resource("f5ipams").
+	err := ipamCli.restClient.Get().
+		Namespace(namespace).Resource("f5ipams").
 		Name(name).Do().Into(result)
 	return result, err
 }
 
-var SchemeGroupVersion = schema.GroupVersion{Group: CRDGroup, Version: CRDVersion}
-
 func addKnownTypes(scheme *runtime.Scheme) error {
+	SchemeGroupVersion := schema.GroupVersion{Group: CRDGroup, Version: CRDVersion}
 	scheme.AddKnownTypes(SchemeGroupVersion,
 		&v1.F5IPAM{},
 		&v1.F5IPAMList{},
@@ -73,22 +50,21 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 	return nil
 }
 
-func NewClient(cfg *rest.Config) (*F5IPAMConfigV1Client, error) {
+func NewRESTClient(cfg *rest.Config) (rest.Interface, error) {
 	scheme := runtime.NewScheme()
 	SchemeBuilder := runtime.NewSchemeBuilder(addKnownTypes)
 	if err := SchemeBuilder.AddToScheme(scheme); err != nil {
 		return nil, err
 	}
+	SchemeGroupVersion := schema.GroupVersion{Group: CRDGroup, Version: CRDVersion}
 	config := *cfg
 	config.GroupVersion = &SchemeGroupVersion
 	config.APIPath = "/apis"
 	config.ContentType = runtime.ContentTypeJSON
-	//config.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: serializer.NewCodecFactory(scheme)}
-	config.NegotiatedSerializer = serializer.NewCodecFactory(scheme).WithoutConversion()
-
+	config.NegotiatedSerializer = serializer.NewCodecFactory(scheme)
 	client, err := rest.RESTClientFor(&config)
 	if err != nil {
 		return nil, err
 	}
-	return &F5IPAMConfigV1Client{restClient: client}, nil
+	return client, nil
 }

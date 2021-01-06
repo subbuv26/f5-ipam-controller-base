@@ -90,8 +90,14 @@ func (in *F5IPAMSpec) DeepCopyInto(out *F5IPAMSpec) {
 	*out = *in
 	if in.HostSpecs != nil {
 		in, out := &in.HostSpecs, &out.HostSpecs
-		*out = make([]HostSpec, len(*in))
-		copy(*out, *in)
+		*out = make([]*HostSpec, len(*in))
+		for i := range *in {
+			if (*in)[i] != nil {
+				in, out := &(*in)[i], &(*out)[i]
+				*out = new(HostSpec)
+				**out = **in
+			}
+		}
 	}
 	return
 }
@@ -111,8 +117,14 @@ func (in *F5IPAMStatus) DeepCopyInto(out *F5IPAMStatus) {
 	*out = *in
 	if in.IPStatus != nil {
 		in, out := &in.IPStatus, &out.IPStatus
-		*out = make([]IPSpec, len(*in))
-		copy(*out, *in)
+		*out = make([]*IPSpec, len(*in))
+		for i := range *in {
+			if (*in)[i] != nil {
+				in, out := &(*in)[i], &(*out)[i]
+				*out = new(IPSpec)
+				**out = **in
+			}
+		}
 	}
 	return
 }

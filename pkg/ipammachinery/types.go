@@ -21,43 +21,28 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/util/workqueue"
 )
 
 type (
 	// CRManager defines the structure of Custom Resource Manager
-	IPAM struct {
+	IPAMClient struct {
 		kubeCRClient  versioned.Interface
 		kubeClient    kubernetes.Interface
+		restClient    rest.Interface
 		ipamInformers map[string]*IPAMInformer
-		nsInformer    *NSInformer
 		namespaces    map[string]bool
-		Partition     string
-		rscQueue      workqueue.RateLimitingInterface
+		stopCh        chan interface{}
 	}
 	// Params defines parameters
 	Params struct {
-		Config         *rest.Config
-		Namespaces     []string
-		NamespaceLabel string
-		Partition      string
+		Config        *rest.Config
+		EventHandlers *cache.ResourceEventHandlerFuncs
+		Namespaces    []string
 	}
 	// CRInformer defines the structure of Custom Resource Informer
 	IPAMInformer struct {
 		namespace    string
 		stopCh       chan struct{}
 		ipamInformer cache.SharedIndexInformer
-	}
-
-	NSInformer struct {
-		stopCh     chan struct{}
-		nsInformer cache.SharedIndexInformer
-	}
-	rqKey struct {
-		namespace string
-		kind      string
-		rscName   string
-		rsc       interface{}
-		rscDelete bool
 	}
 )

@@ -9,8 +9,10 @@ type Orchestrator interface {
 	SetupCommunicationChannels(reqChan chan<- ipamspec.IPAMRequest, respChan <-chan ipamspec.IPAMResponse)
 	// Runs the Orchestrator, watching for resources
 	Run(stopCh <-chan struct{})
+
+	Stop()
 }
 
 func NewOrchestrator() Orchestrator {
-	return nil
+	return NewIPAMK8SClient()
 }
