@@ -42,7 +42,7 @@ fi
 
 if [[ $BASE_OS == "rhel" ]]; then
   docker build --pull --force-rm ${NO_CACHE_ARGS} \
-  -t $BUILD_IMG_TAG \
+  -t $IMG_TAG \
   -f $WKDIR/f5-ipam-controller/build-tools/Dockerfile-rhel-multistage \
   --build-arg COVERALLS_TOKEN=${COVERALLS_TOKEN:-false} \
   --build-arg RUN_TESTS=${RUN_TESTS:-false} \
@@ -68,7 +68,7 @@ else
 
   if [ $DEBUG == 0 ]; then
     docker build --force-rm ${NO_CACHE_ARGS} \
-    -t $BUILD_IMG_TAG-debug \
+    -t $IMG_TAG-debug \
     -f $WKDIR/f5-ipam-controller/build-tools/Dockerfile-debian-debug \
     --build-arg BUILD_INFO=${BUILD_INFO} \
     --build-arg VERSION_INFO=${VERSION_INFO} \
@@ -77,7 +77,7 @@ else
     $WKDIR
   else
     docker build --force-rm ${NO_CACHE_ARGS} \
-    -t $BUILD_IMG_TAG \
+    -t $IMG_TAG \
     -f $WKDIR/f5-ipam-controller/build-tools/Dockerfile-debian-runtime \
     --build-arg BUILD_INFO=${BUILD_INFO} \
     --build-arg VERSION_INFO=${VERSION_INFO} \
@@ -93,9 +93,9 @@ fi
 rm -rf /tmp/docker-build.????
 
 if [[ $DEBUG == 0 ]]; then
-  docker history $BUILD_IMG_TAG-debug
-  echo "Built docker image $BUILD_IMG_TAG-debug"
+  docker history $IMG_TAG-debug
+  echo "Built docker image $IMG_TAG-debug"
 else
-  docker history $BUILD_IMG_TAG
-  echo "Built docker image $BUILD_IMG_TAG"
+  docker history $IMG_TAG
+  echo "Built docker image $IMG_TAG"
 fi
