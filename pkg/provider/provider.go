@@ -38,6 +38,7 @@ func parseIPRange(ipRange string) []string {
 	if len(ipRange) == 0 {
 		return nil
 	}
+	log.Debugf("Parsing IP Ranges: %v", ipRange)
 	ranges := strings.Split(ipRange, ",")
 	var ipRanges []string
 	for _, ipRange := range ranges {
@@ -54,6 +55,8 @@ func (prov *IPAMProvider) generateExternalIPAddr(ipRnages []string) {
 	}
 
 	for _, ip := range ipRnages {
+		log.Debugf("IP Range: %v", ip)
+		ip = strings.Trim(ip, " ")
 		ipRangeArr := strings.Split(ip, "-")
 
 		//checking the cidr of both the IPS if same then proceed otherwise error log
@@ -135,14 +138,20 @@ func ipv4or6(s string) string {
 }
 
 // Creates an A record
-func (prov *IPAMProvider) CreateARecord(name, ipAddr string) bool {
-	prov.store.CreateARecord(name, ipAddr)
+func (prov *IPAMProvider) CreateARecord(hostname, ipAddr string) bool {
+	prov.store.CreateARecord(hostname, ipAddr)
+	log.Debugf("Created 'A' Record. Host:%v, IP:%v", hostname, ipAddr)
 	return true
 }
 
 // Deletes an A record and releases the IP address
-func (prov *IPAMProvider) DeleteARecord(name, ipAddr string) {
-	prov.store.DeleteARecord(name, ipAddr)
+func (prov *IPAMProvider) DeleteARecord(hostname, ipAddr string) {
+	prov.store.DeleteARecord(hostname, ipAddr)
+	log.Debugf("Deleted 'A' Record. Host:%v, IP:%v", hostname, ipAddr)
+}
+
+func (prov *IPAMProvider) GetIPAddress(hostname string) string {
+	return prov.store.GetIPAddress(hostname)
 }
 
 // Gets and reserves the next available IP address

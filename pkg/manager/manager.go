@@ -5,16 +5,18 @@ import log "github.com/subbuv26/f5-ipam-controller/pkg/vlogger"
 // Manager defines the interface that the IPAM system should implement
 type Manager interface {
 	// Creates an A record
-	CreateARecord(name, ipAddr string) bool
+	CreateARecord(hostname, ipAddr string) bool
 	// Deletes an A record and releases the IP address
-	DeleteARecord(name, ipAddr string)
+	DeleteARecord(hostname, ipAddr string)
+	// Gets IP Address associated with hostname
+	GetIPAddress(hostname string) string
 	// Gets and reserves the next available IP address
-	GetNextAddr(cidr string) string
+	GetNextIPAddress(cidr string) string
 	// Releases an IP address
-	ReleaseAddr(ipAddr string)
+	ReleaseIPAddress(ipAddr string)
 }
 
-const F5IPAMProvider = "f5ipam"
+const F5IPAMProvider = "f5-ip-provider"
 
 type Params struct {
 	Provider string
@@ -24,6 +26,7 @@ type Params struct {
 func NewManager(params Params) Manager {
 	switch params.Provider {
 	case F5IPAMProvider:
+		log.Debugf("Creating Manager with Provider: %v", F5IPAMProvider)
 		f5IPAMParams := IPAMManagerParams{Range: params.Range}
 		return NewIPAMManager(f5IPAMParams)
 	default:

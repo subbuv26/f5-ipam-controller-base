@@ -9,14 +9,7 @@ import (
 	"time"
 
 	log "github.com/subbuv26/f5-ipam-controller/pkg/vlogger"
-	//
-	//"k8s.io/api/core/v1"
-	//"k8s.io/api/extensions/v1beta1"
-	//"k8s.io/apimachinery/pkg/api/meta"
-	//metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	//"k8s.io/apimachinery/pkg/labels"
-	//"k8s.io/apimachinery/pkg/runtime"
-	//utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	//"k8s.io/client-go/rest"
@@ -58,6 +51,7 @@ type ResourceMeta struct {
 }
 
 func NewIPAMK8SClient() *K8sIPAMClient {
+	log.Debugf("Creating IPAM Kubernetes Client")
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		log.Fatalf("Error creating configuration: %v", err)
@@ -82,7 +76,12 @@ func NewIPAMK8SClient() *K8sIPAMClient {
 
 	ipamCli := ipammachinery.NewIPAMClient(ipamParams)
 
+	if ipamCli == nil {
+		return nil
+	}
 	k8sIPAMClient.ipamCli = ipamCli
+	//k8sIPAMClient.registerIPAMCRD(config)
+	//k8sIPAMClient.createIPAMResource()
 	return k8sIPAMClient
 }
 
@@ -95,11 +94,49 @@ func (k8sc *K8sIPAMClient) SetupCommunicationChannels(
 	k8sc.respChan = respChan
 }
 
+//
+//func (k8sc *K8sIPAMClient) registerIPAMCRD(confg *rest.Config) {
+//
+//	regClint, err := clientset.NewForConfig(confg)
+//	if err != nil {
+//		log.Debugf("[IPAM] error while Creating reg Client %v", err)
+//		return
+//	}
+//
+//	err = ipammachinery.RegisterCRD(regClint)
+//	if err != nil {
+//		log.Debugf("[IPAM] error while registering CRD %v", err)
+//	}
+//}
+//
+////Create IPAM CRD
+//func (k8sc *K8sIPAMClient) createIPAMResource() error {
+//
+//	crName := "sample.ipam"
+//	f5ipam := &ficV1.F5IPAM{
+//		ObjectMeta: metaV1.ObjectMeta{
+//			Name: crName,
+//		},
+//		Spec:   ficV1.F5IPAMSpec{},
+//		Status: ficV1.F5IPAMStatus{},
+//	}
+//	// f5ipam.SetResourceVersion(obj.ResourceVersion)
+//	ipamCR, err := k8sc.ipamCli.Create("kube-system", f5ipam)
+//	if err != nil {
+//		log.Errorf("[ipam] error while creating the CRD object %v\n", err)
+//		return err
+//	}
+//	log.Debugf("[ipam] Created IPAM Custom Resource: \n%v\n", ipamCR)
+//	return nil
+//}
+
 // Runs the Orchestrator, watching for resources
-func (k8sc *K8sIPAMClient) Run(stopCh <-chan struct{}) {
+func (k8sc *K8sIPAMClient) Start(stopCh <-chan struct{}) {
 	k8sc.ipamCli.Start()
 	go wait.Until(k8sc.customResourceWorker, time.Second, stopCh)
 	go wait.Until(k8sc.responseWorker, time.Second, stopCh)
+
+	log.Debugf("K8S Orchestrator Started")
 }
 
 func (k8sc *K8sIPAMClient) Stop() {
@@ -107,27 +144,30 @@ func (k8sc *K8sIPAMClient) Stop() {
 }
 
 func (k8sc *K8sIPAMClient) enqueueIPAM(obj interface{}) {
-	key := rqKey{
+
+	key := &rqKey{
 		rsc:       obj.(*ficV1.F5IPAM),
 		oldRsc:    nil,
 		Operation: CREATE,
 	}
+	log.Debugf("Enqueueing on Create: %v/%v", key.rsc.Namespace, key.rsc.Name)
 
 	k8sc.rscQueue.Add(key)
 }
 
 func (k8sc *K8sIPAMClient) enqueueUpdatedIPAM(old, cur interface{}) {
-	key := rqKey{
+	key := &rqKey{
 		rsc:       cur.(*ficV1.F5IPAM),
 		oldRsc:    old.(*ficV1.F5IPAM),
 		Operation: UPDATE,
 	}
+	log.Debugf("Enqueueing on Update: %v/%v", key.rsc.Namespace, key.rsc.Name)
 
 	k8sc.rscQueue.Add(key)
 }
 
 func (k8sc *K8sIPAMClient) enqueueDeletedIPAM(obj interface{}) {
-	key := rqKey{
+	key := &rqKey{
 		rsc:       obj.(*ficV1.F5IPAM),
 		oldRsc:    nil,
 		Operation: DELETE,
@@ -262,7 +302,7 @@ func (k8sc *K8sIPAMClient) processResponse() bool {
 					log.Errorf("Unable to find F5IPAM: %v/%v to update", metadata.namespace, metadata.name)
 				}
 
-				var found bool
+				found := false
 				for _, ipSpec := range ipamRsc.Status.IPStatus {
 					if ipSpec.Host == resp.Request.HostName &&
 						ipSpec.Cidr == resp.Request.CIDR {
@@ -284,6 +324,48 @@ func (k8sc *K8sIPAMClient) processResponse() bool {
 				if err != nil {
 					log.Errorf("Unable to Update F5IPAM: %v/%v", metadata.namespace, metadata.name)
 				}
+				log.Debugf("Updated: %v/%v with Status. Added Host: %v, CIDR: %v, IP: %v",
+					metadata.namespace,
+					metadata.name,
+					resp.Request.HostName,
+					resp.Request.CIDR,
+					resp.IPAddr,
+				)
+			}
+		case ipamspec.DELETE:
+			if resp.Status {
+				metadata := resp.Request.Metadata.(ResourceMeta)
+				ipamRsc, err := k8sc.ipamCli.Get(metadata.namespace, metadata.name)
+				if err != nil {
+					log.Errorf("Unable to find F5IPAM: %v/%v to update", metadata.namespace, metadata.name)
+				}
+				found := false
+				index := 0
+				for i, ipSpec := range ipamRsc.Status.IPStatus {
+					if ipSpec.Host == resp.Request.HostName &&
+						ipSpec.Cidr == resp.Request.CIDR {
+
+						index = i
+						found = true
+					}
+				}
+				if found {
+					ipamRsc.Status.IPStatus = append(
+						ipamRsc.Status.IPStatus[:index],
+						ipamRsc.Status.IPStatus[index:]...,
+					)
+					_, err = k8sc.ipamCli.Update(ipamRsc.Namespace, ipamRsc)
+					if err != nil {
+						log.Errorf("Unable to Update F5IPAM: %v/%v", metadata.namespace, metadata.name)
+					}
+				}
+				log.Debugf("Updated: %v/%v with Status. Removed Host: %v, CIDR: %v, IP: %v",
+					metadata.namespace,
+					metadata.name,
+					resp.Request.HostName,
+					resp.Request.CIDR,
+					resp.IPAddr,
+				)
 			}
 		}
 	}

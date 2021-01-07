@@ -47,9 +47,13 @@ func NewIPAMClient(params Params) *IPAMClient {
 		namespaces:    make(map[string]bool),
 		ipamInformers: make(map[string]*IPAMInformer),
 	}
+	for _, ns := range params.Namespaces {
+		ipamCli.namespaces[ns] = true
+	}
 
 	if err := ipamCli.setupClients(params.Config); err != nil {
 		log.Error(err.Error())
+		return nil
 	}
 
 	if err := ipamCli.setupInformersWithEventHandlers(params.EventHandlers); err != nil {
@@ -77,7 +81,6 @@ func (ipamCli *IPAMClient) setupClients(config *rest.Config) error {
 	if err != nil {
 		return fmt.Errorf("Failed to create Kubernets REST Client: %v", err)
 	}
-	log.Debug("Client Created")
 
 	ipamCli.kubeCRClient = kubeCRClient
 	ipamCli.kubeClient = kubeClient
@@ -90,6 +93,7 @@ func (ipamCli *IPAMClient) setupInformersWithEventHandlers(eventHandlers *cache.
 	for ns, _ := range ipamCli.namespaces {
 		if err := ipamCli.addNamespacedInformer(ns, eventHandlers); err != nil {
 			log.Errorf("Unable to setup informer for namespace: %v, Error:%v", "default", err)
+			return err
 		}
 	}
 

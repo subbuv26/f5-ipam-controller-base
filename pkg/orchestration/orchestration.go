@@ -7,8 +7,8 @@ import (
 type Orchestrator interface {
 	// SetupCommunicationChannels sets Request and Response channels
 	SetupCommunicationChannels(reqChan chan<- ipamspec.IPAMRequest, respChan <-chan ipamspec.IPAMResponse)
-	// Runs the Orchestrator, watching for resources
-	Run(stopCh <-chan struct{})
+	// Starts the Orchestrator, watching for resources
+	Start(stopCh <-chan struct{})
 
 	Stop()
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	_ "github.com/mattn/go-sqlite3"
 	log "github.com/subbuv26/f5-ipam-controller/pkg/vlogger"
 )
 
@@ -22,14 +23,14 @@ func NewStore() *DBStore {
 	// SQLite is a file based database.
 
 	log.Debug("Creating ipaddress-database.db...")
-	file, err := os.Create("ipaddress-database.db") // Create SQLite file
+	file, err := os.Create("/tmp/ipaddress-database.db") // Create SQLite file
 	if err != nil {
 		log.Errorf("Unable to Create DB File, %v", err)
 		return nil
 	}
 	_ = file.Close()
 
-	db, err := sql.Open("sqlite3", "./ipaddress-database.db")
+	db, err := sql.Open("sqlite3", "/tmp/ipaddress-database.db")
 	if err != nil {
 		log.Errorf("Unable to Initialise DB, %v", err)
 		return nil
@@ -102,7 +103,7 @@ func (store *DBStore) DisplayIPRecords() {
 	if err != nil {
 		log.Debugf(" err : ", err)
 	}
-	log.Debugf(" column names ", columns)
+	log.Debugf("Column names: %v", columns)
 	defer row.Close()
 	for row.Next() {
 		var id int
@@ -135,6 +136,21 @@ func (store *DBStore) AllocateIP(cidr string) string {
 	_, err = statement.Exec(id)
 	if err != nil {
 		log.Errorf("Unable to update row in Table 'ipaddress_range': %v", err)
+	}
+	return ipaddress
+}
+
+func (store *DBStore) GetIPAddress(hostname string) string {
+	var ipaddress string
+
+	queryString := fmt.Sprintf(
+		"SELECT ipaddress FROM a_records where hostname=%s order by ipaddress ASC limit 1",
+		hostname,
+	)
+	err := store.db.QueryRow(queryString).Scan(&ipaddress)
+	if err != nil {
+		log.Info("No Available IP Addresses to Allocate")
+		return ""
 	}
 	return ipaddress
 }
