@@ -17,24 +17,19 @@ import (
 )
 
 const (
-	DefaultProvider = "f5-ip-provider"
+	DefaultProvider = manager.F5IPAMProvider
 )
 
 var (
 	// Flag sets and supported flags
 	flags         *flag.FlagSet
 	globalFlags   *flag.FlagSet
-	kubeFlags     *flag.FlagSet
 	providerFlags *flag.FlagSet
 
 	// Global
 	logLevel *string
 	orch     *string
 	provider *string
-
-	// Kubernetes
-	inCluster  *bool
-	kubeConfig *string
 
 	// Provider
 	iprange *string
@@ -43,7 +38,6 @@ var (
 func init() {
 	flags = flag.NewFlagSet("main", flag.ContinueOnError)
 	globalFlags = flag.NewFlagSet("Global", flag.ContinueOnError)
-	kubeFlags = flag.NewFlagSet("Kubernetes", flag.ContinueOnError)
 	providerFlags = flag.NewFlagSet("Provider", flag.ContinueOnError)
 
 	//Flag terminal wrapping
@@ -64,38 +58,24 @@ func init() {
 	provider = globalFlags.String("ip-provider", DefaultProvider,
 		"Required, the IPAM system that the controller will interface with.")
 
-	// Kubernetes flags
-	inCluster = kubeFlags.Bool("running-in-cluster", true,
-		"Optional, if this controller is running in a Kubernetes cluster, "+
-			"use the pod secrets for creating a Kubernetes client.")
-	kubeConfig = kubeFlags.String("kubeconfig", "./config",
-		"Optional, absolute path to the kubeconfig file.")
-
-	iprange = providerFlags.String("iprange", "",
+	iprange = providerFlags.String("ip-range", "",
 		"Optional, the Default Provider needs iprange to build pools of IP Addresses")
 
 	globalFlags.Usage = func() {
 		_, _ = fmt.Fprintf(os.Stderr, "  Global:\n%s\n", globalFlags.FlagUsagesWrapped(width))
 	}
 
-	kubeFlags.Usage = func() {
-		fmt.Fprintf(os.Stderr, "  Kubernetes:\n%s\n", kubeFlags.FlagUsagesWrapped(width))
-	}
-
 	providerFlags.Usage = func() {
 		_, _ = fmt.Fprintf(os.Stderr, "  Provider:\n%s\n", providerFlags.FlagUsagesWrapped(width))
 	}
 	flags.AddFlagSet(globalFlags)
-	flags.AddFlagSet(kubeFlags)
 	flags.AddFlagSet(providerFlags)
 
 	flags.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage of %s\n", os.Args[0])
 		globalFlags.Usage()
-		kubeFlags.Usage()
 		providerFlags.Usage()
 	}
-	_, _ = fmt.Fprintf(os.Stderr, "  Temp: %s", *iprange)
 }
 
 func verifyArgs() error {
@@ -133,6 +113,10 @@ func main() {
 	}
 
 	orcr := orchestration.NewOrchestrator()
+	if orcr == nil {
+		log.Error("Unable to create IPAM Client")
+		os.Exit(1)
+	}
 	mgrParams := manager.Params{
 		Provider:          *provider,
 		IPAMManagerParams: manager.IPAMManagerParams{Range: *iprange},
@@ -148,7 +132,7 @@ func main() {
 			StopCh:       stopCh,
 		},
 	)
-	ctlr.Run()
+	ctlr.Start()
 
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)

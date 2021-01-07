@@ -33,31 +33,51 @@ func (ctlr *Controller) runController() {
 	for req := range ctlr.reqChan {
 		switch req.Operation {
 		case ipamspec.CREATE:
-			ipAddr := ctlr.Manager.GetNextAddr(req.CIDR)
-			if ipAddr != "" {
-				ctlr.Manager.CreateARecord(req.HostName, ipAddr)
-				go func() {
-					resp := ipamspec.IPAMResponse{
-						Request: req,
-						IPAddr:  ipAddr,
-					}
-					ctlr.respChan <- resp
-				}()
+
+			sendResponse := func(ipAddr string) {
+				resp := ipamspec.IPAMResponse{
+					Request: req,
+					IPAddr:  ipAddr,
+					Status:  true,
+				}
+				ctlr.respChan <- resp
 			}
-			//case ipamspec.DELETE:
-			//	ctlr.Manager.ReleaseAddr(req.CIDR)
+
+			ipAddr := ctlr.Manager.GetIPAddress(req.HostName)
+			if ipAddr != "" {
+				go sendResponse(ipAddr)
+				continue
+			}
+
+			ipAddr = ctlr.Manager.GetNextIPAddress(req.CIDR)
+			if ipAddr != "" {
+				log.Debugf("Allocated IP: %v for CIDR: %v", ipAddr, req.CIDR)
+				ctlr.Manager.CreateARecord(req.HostName, ipAddr)
+				go sendResponse(ipAddr)
+			}
+		case ipamspec.DELETE:
+			ctlr.Manager.ReleaseIPAddress(req.IPAddr)
+			ctlr.Manager.DeleteARecord(req.CIDR, req.IPAddr)
+			go func() {
+				resp := ipamspec.IPAMResponse{
+					Request: req,
+					IPAddr:  "",
+					Status:  true,
+				}
+				ctlr.respChan <- resp
+			}()
 		}
 	}
 }
 
-func (ctlr *Controller) Run() {
+func (ctlr *Controller) Start() {
 	ctlr.Orchestrator.SetupCommunicationChannels(
 		ctlr.reqChan,
 		ctlr.respChan,
 	)
 	log.Infof("Controller started: (%p)", ctlr)
 
-	ctlr.Orchestrator.Run(ctlr.StopCh)
+	ctlr.Orchestrator.Start(ctlr.StopCh)
 
 	go ctlr.runController()
 }
