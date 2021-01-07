@@ -299,7 +299,9 @@ func (k8sc *K8sIPAMClient) processResponse() bool {
 				metadata := resp.Request.Metadata.(ResourceMeta)
 				ipamRsc, err := k8sc.ipamCli.Get(metadata.namespace, metadata.name)
 				if err != nil {
-					log.Errorf("Unable to find F5IPAM: %v/%v to update", metadata.namespace, metadata.name)
+					log.Errorf("Unable to find F5IPAM: %v/%v to update. Error: %v",
+						metadata.namespace, metadata.name, err)
+					break
 				}
 
 				found := false
@@ -339,20 +341,18 @@ func (k8sc *K8sIPAMClient) processResponse() bool {
 				if err != nil {
 					log.Errorf("Unable to find F5IPAM: %v/%v to update", metadata.namespace, metadata.name)
 				}
-				found := false
-				index := 0
+				index := -1
 				for i, ipSpec := range ipamRsc.Status.IPStatus {
 					if ipSpec.Host == resp.Request.HostName &&
 						ipSpec.Cidr == resp.Request.CIDR {
 
 						index = i
-						found = true
 					}
 				}
-				if found {
+				if index != -1 {
 					ipamRsc.Status.IPStatus = append(
 						ipamRsc.Status.IPStatus[:index],
-						ipamRsc.Status.IPStatus[index:]...,
+						ipamRsc.Status.IPStatus[index+1:]...,
 					)
 					_, err = k8sc.ipamCli.Update(ipamRsc.Namespace, ipamRsc)
 					if err != nil {
