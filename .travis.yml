@@ -1,15 +1,15 @@
+language: go
+sudo: required
+services:
+  - docker
 git:
   # don't limit git clone depth
   depth: false
 
 before_install:
-  - docker pull golang:1.11.1
-  - docker pull node:6.11.0-slim
-  - docker pull f5devcentral/containthedocs
   - pyenv global 3.7.1
 script:
   - set -e
-  - docker run --rm -it -v `pwd`:`pwd` -w `pwd` node:6.11.0-slim build-tools/schema-tests.sh
   - if [ "$DOCKER_NAMESPACE" == "" ]; then DOCKER_NAMESPACE="local"; fi
   - BASE_PUSH_TARGET="$DOCKER_NAMESPACE/f5-ipam-controller"
   - |
@@ -40,8 +40,8 @@ script:
     fi
   - export CLEAN_BUILD=true
   - export BASE_OS=debian
-  - make verify
-  - make prod
+  #  - make verify
+  - make prod-quick
   - docker tag "$IMG_TAG" "$BASE_PUSH_TARGET:devel-$TRAVIS_BRANCH"
   - docker tag "$IMG_TAG" "$BASE_PUSH_TARGET:devel-$TRAVIS_BRANCH-n-$TRAVIS_BUILD_NUMBER-id-$TRAVIS_BUILD_ID"
   - |
@@ -58,17 +58,7 @@ script:
       docker push "$BASE_PUSH_TARGET:$BUILD_VERSION-$BUILD_INFO"
       docker push "$BASE_PUSH_TARGET:latest"
     fi
-  - make docs
-
-deploy:
-  - provider: script
-    skip_cleanup: true
-    on:
-      all_branches: true
-      repo: F5Networks/f5-ipam-controller
-      condition: $TRAVIS_BRANCH == *"-stable" || "$TRAVIS_BRANCH" =~ ^v[0-9]+\.[0-9]+\.[0-9]*
-    script:
-      - ./build-tools/deploy-docs.sh publish-product-docs-to-prod connectors/f5-ipam-controller $CTLR_VERSION
+#  - make docs
 
 notifications:
   slack:
