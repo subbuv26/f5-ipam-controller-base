@@ -51,7 +51,7 @@ func (ctlr *Controller) runController() {
 
 			ipAddr = ctlr.Manager.GetNextIPAddress(req.CIDR)
 			if ipAddr != "" {
-				log.Debugf("Allocated IP: %v for CIDR: %v", ipAddr, req.CIDR)
+				log.Debugf("[CORE] Allocated IP: %v for CIDR: %v", ipAddr, req.CIDR)
 				ctlr.Manager.CreateARecord(req.HostName, ipAddr)
 				go sendResponse(req, ipAddr)
 			}
@@ -59,7 +59,7 @@ func (ctlr *Controller) runController() {
 			ipAddr := ctlr.Manager.GetIPAddress(req.HostName)
 			if ipAddr != "" {
 				ctlr.Manager.ReleaseIPAddress(ipAddr)
-				ctlr.Manager.DeleteARecord(req.CIDR, ipAddr)
+				ctlr.Manager.DeleteARecord(req.HostName, ipAddr)
 			}
 			go func(request ipamspec.IPAMRequest) {
 				resp := ipamspec.IPAMResponse{
@@ -78,7 +78,7 @@ func (ctlr *Controller) Start() {
 		ctlr.reqChan,
 		ctlr.respChan,
 	)
-	log.Info("Controller started")
+	log.Info("[CORE] Controller started")
 
 	ctlr.Orchestrator.Start(ctlr.StopCh)
 
