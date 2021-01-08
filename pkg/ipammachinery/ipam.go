@@ -35,7 +35,7 @@ const (
 	F5ipam = "F5IPAM"
 
 	CRDPlural   string = "f5ipams"
-	CRDGroup    string = "cis.f5.com"
+	CRDGroup    string = "fic.f5.com"
 	CRDVersion  string = "v1"
 	FullCRDName string = CRDPlural + "." + CRDGroup
 )
@@ -105,7 +105,6 @@ func (ipamCli *IPAMClient) Start() {
 	for _, inf := range ipamCli.ipamInformers {
 		inf.start()
 	}
-	log.Debug("[ipam] Starting")
 }
 
 func (ipamCli *IPAMClient) Stop() {

@@ -111,7 +111,7 @@ func (store *DBStore) DisplayIPRecords() {
 		var status int
 		var cidr string
 		row.Scan(&id, &ipaddress, &status, &cidr)
-		log.Debugf("ipaddress_range: ", id, " ", ipaddress, " ", status, " ", cidr)
+		log.Debugf("ipaddress_range: %v\t %v\t%v\t%v", id, ipaddress, status, cidr)
 	}
 }
 
@@ -120,13 +120,13 @@ func (store *DBStore) AllocateIP(cidr string) string {
 	var id int
 
 	queryString := fmt.Sprintf(
-		"SELECT ipaddress,id FROM ipaddress_range where status=%d AND cidr=%s order by id ASC limit 1",
+		"SELECT ipaddress,id FROM ipaddress_range where status=%d AND cidr=\"%s\" order by id ASC limit 1",
 		AVAILABLE,
 		cidr,
 	)
 	err := store.db.QueryRow(queryString).Scan(&ipaddress, &id)
 	if err != nil {
-		log.Info("No Available IP Addresses to Allocate")
+		log.Infof("No Available IP Addresses to Allocate: %v", err)
 		return ""
 	}
 
@@ -144,12 +144,12 @@ func (store *DBStore) GetIPAddress(hostname string) string {
 	var ipaddress string
 
 	queryString := fmt.Sprintf(
-		"SELECT ipaddress FROM a_records where hostname=%s order by ipaddress ASC limit 1",
+		"SELECT ipaddress FROM a_records where hostname=\"%s\" order by ipaddress ASC limit 1",
 		hostname,
 	)
 	err := store.db.QueryRow(queryString).Scan(&ipaddress)
 	if err != nil {
-		log.Info("No Available IP Addresses to Allocate")
+		log.Infof("No A record with Host: %v", hostname)
 		return ""
 	}
 	return ipaddress
@@ -179,7 +179,7 @@ func (store *DBStore) CreateARecord(hostname, ipAddr string) bool {
 }
 
 func (store *DBStore) DeleteARecord(hostname, ipAddr string) bool {
-	deleteARecord := fmt.Sprintf("DELETE FROM a_records WHERE ipaddress = %v AND hostname = %v", ipAddr, hostname)
+	deleteARecord := "DELETE FROM a_records WHERE ipaddress=? AND hostname=?"
 
 	statement, _ := store.db.Prepare(deleteARecord)
 

@@ -9,6 +9,11 @@ import (
 	log "github.com/subbuv26/f5-ipam-controller/pkg/vlogger"
 )
 
+const (
+	IPV4 = "IPv4"
+	IPV6 = "IPv6"
+)
+
 type IPAMProvider struct {
 	store *sqlite.DBStore
 	cidrs map[string]bool
@@ -27,7 +32,7 @@ func NewProvider(params Params) *IPAMProvider {
 
 	prov := &IPAMProvider{
 		store: sqlite.NewStore(),
-		cidrs: nil,
+		cidrs: make(map[string]bool),
 	}
 	prov.generateExternalIPAddr(ipRanges)
 	return prov
@@ -49,14 +54,13 @@ func parseIPRange(ipRange string) []string {
 
 // generateExternalIPAddr ...
 func (prov *IPAMProvider) generateExternalIPAddr(ipRnages []string) {
-	var startRangeIP, endRangeIP, Subnet, ExternalIPType string
+	var startRangeIP, endRangeIP, Subnet string
 	if len(ipRnages) == 0 {
 		log.Fatal("No IP range provided")
 	}
 
 	for _, ip := range ipRnages {
-		log.Debugf("IP Range: %v", ip)
-		ip = strings.Trim(ip, " ")
+		ip = strings.Trim(ip, "\"")
 		ipRangeArr := strings.Split(ip, "-")
 
 		//checking the cidr of both the IPS if same then proceed otherwise error log
@@ -66,11 +70,17 @@ func (prov *IPAMProvider) generateExternalIPAddr(ipRnages []string) {
 		if ipRangeStart[1] != ipRangeEnd[1] {
 			log.Debugf("IPv4 Range Subnet mask is inconsistent")
 			continue
-		} else {
-			ExternalIPType = ipv4or6(ip)
-			log.Debugf("\nIP-Address is of Type  %v: ", ExternalIPType)
-			Subnet = ipRangeStart[1]
 		}
+		switch ipv4or6(ip) {
+		case IPV6:
+			log.Debugf("IPv6 is not supported")
+		case IPV4:
+			break
+		default:
+			log.Debugf("Invalid IP Address provided in the range")
+		}
+
+		Subnet = ipRangeStart[1]
 
 		startRangeIP = ipRangeStart[0]
 		endRangeIP = ipRangeEnd[0]
@@ -78,17 +88,22 @@ func (prov *IPAMProvider) generateExternalIPAddr(ipRnages []string) {
 		log.Debugf("IP Pool: %v to %v/%v", startRangeIP, endRangeIP, Subnet)
 
 		//endip validation
-		ipEnd, _, err := net.ParseCIDR(endRangeIP + "/" + Subnet)
+		ipEnd, ipNet, err := net.ParseCIDR(endRangeIP + "/" + Subnet)
 		if err != nil {
-			fmt.Print("Parsing err :  ", err)
-			//return nil
+			log.Debugf("Parsing err :  ", err)
+			continue
 		}
+
+		maskSize, _ := ipNet.Mask.Size()
+		cidr := fmt.Sprintf("%s/%v", ipNet.IP.String(), maskSize)
+		prov.cidrs[cidr] = true
+		log.Debugf("Processed CIDR: %v", cidr)
 
 		//startip validation
 		ipStart, ipnetStart, err := net.ParseCIDR(startRangeIP + "/" + Subnet)
 		if err != nil {
-			fmt.Print("Parsing err : ", err)
-			//return nil
+			log.Debugf("Parsing err : ", err)
+			continue
 		}
 		ips := []string{}
 		for ; ipnetStart.Contains(ipStart); inc(ipStart) {
@@ -100,18 +115,10 @@ func (prov *IPAMProvider) generateExternalIPAddr(ipRnages []string) {
 				break
 			}
 		}
-		prov.store.InsertIP(ips, Subnet)
+		prov.store.InsertIP(ips, cidr)
 	}
 
 	prov.store.DisplayIPRecords()
-
-	//ipAllocated := store.AllocateIP()
-	//fmt.Println("********** : ", ipAllocated)
-	//prov.store.DisplayIPRecords()
-	//
-	//fmt.Println("Going in allocate ip")
-	//store.ReleaseIP("172.16.1.1")
-	//store.DisplayIPRecords()
 }
 
 func inc(ip net.IP) {
@@ -128,9 +135,9 @@ func ipv4or6(s string) string {
 	for i := 0; i < len(s); i++ {
 		switch s[i] {
 		case '.':
-			return "IPv4"
+			return IPV4
 		case ':':
-			return "IPv6"
+			return IPV6
 		}
 	}
 	return "Invalid Address"
