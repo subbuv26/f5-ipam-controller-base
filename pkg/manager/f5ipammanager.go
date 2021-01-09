@@ -62,6 +62,11 @@ func (ipMgr *IPAMManager) GetNextIPAddress(cidr string) string {
 	return ipMgr.provider.GetNextAddr(cidr)
 }
 
+// Allocates this particular ip from the CIDR
+func (ipMgr *IPAMManager) AllocateIPAddress(cidr, ipAddr string) bool {
+	return ipMgr.provider.AllocateIPAddress(cidr, ipAddr)
+}
+
 // Releases an IP address
 func (ipMgr *IPAMManager) ReleaseIPAddress(ipAddr string) {
 

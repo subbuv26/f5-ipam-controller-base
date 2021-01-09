@@ -170,6 +170,29 @@ func (prov *IPAMProvider) GetNextAddr(cidr string) string {
 	return prov.store.AllocateIP(cidr)
 }
 
+// Marks an IP address as allocated if it belongs to that CIDR
+func (prov *IPAMProvider) AllocateIPAddress(cidr, ipAddr string) bool {
+	if _, ok := prov.cidrs[cidr]; !ok {
+		log.Debugf("[PROV] Unsupported CIDR: %v", cidr)
+		return false
+	}
+
+	_, ipNet, err := net.ParseCIDR(cidr)
+	if err != nil {
+		log.Debugf("[PROV] Parsing CIDR error : ", err)
+		return false
+	}
+	ip := net.ParseIP(ipAddr)
+	if ip == nil {
+		log.Debugf("[PROV] Parsing IP error")
+		return false
+	}
+	if ipNet.Contains(ip) {
+		return prov.store.MarkIPAsAllocated(cidr, ipAddr)
+	}
+	return false
+}
+
 // Releases an IP address
 func (prov *IPAMProvider) ReleaseAddr(ipAddr string) {
 	prov.store.ReleaseIP(ipAddr)

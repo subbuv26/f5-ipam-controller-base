@@ -12,6 +12,8 @@ type Manager interface {
 	GetIPAddress(hostname string) string
 	// Gets and reserves the next available IP address
 	GetNextIPAddress(cidr string) string
+	// Allocates this particular ip from the CIDR
+	AllocateIPAddress(cidr, ipAddr string) bool
 	// Releases an IP address
 	ReleaseIPAddress(ipAddr string)
 }

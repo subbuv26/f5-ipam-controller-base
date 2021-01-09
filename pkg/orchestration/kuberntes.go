@@ -293,6 +293,7 @@ func (k8sc *K8sIPAMClient) processResource() bool {
 
 func (k8sc *K8sIPAMClient) processResponse() bool {
 	for resp := range k8sc.respChan {
+		removeStatusEntry := false
 		switch resp.Request.Operation {
 		case ipamspec.CREATE:
 			if resp.Status {
@@ -333,9 +334,14 @@ func (k8sc *K8sIPAMClient) processResponse() bool {
 					resp.Request.CIDR,
 					resp.IPAddr,
 				)
+				break
 			}
+			// If response status is fail then ensure Entry from Status of f5ipam CR is removed
+			removeStatusEntry = true
+			fallthrough
+
 		case ipamspec.DELETE:
-			if resp.Status {
+			if resp.Status || removeStatusEntry {
 				metadata := resp.Request.Metadata.(ResourceMeta)
 				ipamRsc, err := k8sc.ipamCli.Get(metadata.namespace, metadata.name)
 				if err != nil {

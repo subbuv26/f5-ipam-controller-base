@@ -43,6 +43,28 @@ func (ctlr *Controller) runController() {
 				ctlr.respChan <- resp
 			}
 
+			// Controller tries to allocate asked IP Address to be allocated for the host from the give cidr
+			// This happens during Starting of Controller to sync the DB with Initial Requests
+			if req.IPAddr != "" {
+				if ctlr.Manager.AllocateIPAddress(req.CIDR, req.IPAddr) {
+					log.Debugf("[CORE] Allocated IP: %v for CIDR: %v", req.IPAddr, req.CIDR)
+					ctlr.Manager.CreateARecord(req.HostName, req.IPAddr)
+					go sendResponse(req, req.IPAddr)
+				} else {
+					log.Debugf("[CORE] Unable to Allocate asked IPAddress: %v to Host: %v in CIDR: %v",
+						req.IPAddr, req.HostName, req.CIDR)
+					go func(request ipamspec.IPAMRequest) {
+						resp := ipamspec.IPAMResponse{
+							Request: request,
+							IPAddr:  "",
+							Status:  false,
+						}
+						ctlr.respChan <- resp
+					}(req)
+				}
+				break
+			}
+
 			ipAddr := ctlr.Manager.GetIPAddress(req.HostName)
 			if ipAddr != "" {
 				go sendResponse(req, ipAddr)

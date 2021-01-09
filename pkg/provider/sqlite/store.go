@@ -127,6 +127,32 @@ func (store *DBStore) AllocateIP(cidr string) string {
 	return ipaddress
 }
 
+func (store *DBStore) MarkIPAsAllocated(cidr, ipAddr string) bool {
+	var id int
+
+	queryString := fmt.Sprintf(
+		"SELECT id FROM ipaddress_range where status=%d AND cidr=\"%s\" AND ipaddress=\"%s\" order by id ASC limit 1",
+		AVAILABLE,
+		cidr,
+		ipAddr,
+	)
+	err := store.db.QueryRow(queryString).Scan(&id)
+	if err != nil {
+		log.Infof("[STORE] No Available IP Addresses to Allocate: %v", err)
+		return false
+	}
+
+	allocateIPSql := fmt.Sprintf("UPDATE ipaddress_range set status = %d where id = ?", ALLOCATED)
+	statement, _ := store.db.Prepare(allocateIPSql)
+
+	_, err = statement.Exec(id)
+	if err != nil {
+		log.Errorf("[STORE] Unable to update row in Table 'ipaddress_range': %v", err)
+		return false
+	}
+	return true
+}
+
 func (store *DBStore) GetIPAddress(hostname string) string {
 	var ipaddress string
 
