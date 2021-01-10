@@ -3,8 +3,6 @@ package sqlite
 import (
 	"database/sql"
 	"fmt"
-	"os"
-
 	_ "github.com/mattn/go-sqlite3"
 	log "github.com/subbuv26/f5-ipam-controller/pkg/vlogger"
 )
@@ -19,26 +17,15 @@ const (
 )
 
 func NewStore() *DBStore {
-	_ = os.Remove("ipaddress-database.db")
-	// SQLite is a file based database.
-
-	log.Debug("Creating ipaddress-database.db...")
-	file, err := os.Create("/tmp/ipaddress-database.db") // Create SQLite file
+	db, err := sql.Open("sqlite3", "file::memory:?cache=shared")
 	if err != nil {
-		log.Errorf("Unable to Create DB File, %v", err)
-		return nil
-	}
-	_ = file.Close()
-
-	db, err := sql.Open("sqlite3", "/tmp/ipaddress-database.db")
-	if err != nil {
-		log.Errorf("Unable to Initialise DB, %v", err)
+		log.Errorf("[STORE] Unable to Initialise DB, %v", err)
 		return nil
 	}
 
 	err = db.Ping()
 	if err != nil {
-		log.Errorf("Unable to Establish Connection to DB, %v", err)
+		log.Errorf("[STORE] Unable to Establish Connection to DB, %v", err)
 		return nil
 	}
 
@@ -62,7 +49,7 @@ func (store *DBStore) CreateTables() bool {
 
 	_, err := statement.Exec()
 	if err != nil {
-		log.Errorf("Unable to Create Table 'ipaddress_range' in Database")
+		log.Errorf("[STORE] Unable to Create Table 'ipaddress_range' in Database")
 		return false
 	}
 	createARecodsTableSQL := `CREATE TABLE a_records (
@@ -74,7 +61,7 @@ func (store *DBStore) CreateTables() bool {
 
 	_, err = statement.Exec()
 	if err != nil {
-		log.Errorf("Unable to Create  Table 'a_records' in Database")
+		log.Errorf("[STORE] Unable to Create  Table 'a_records' in Database")
 		return false
 	}
 	return true
@@ -88,7 +75,7 @@ func (store *DBStore) InsertIP(ips []string, cidr string) {
 
 		_, err := statement.Exec(j, AVAILABLE, cidr)
 		if err != nil {
-			log.Error("Unable to Insert row in Table 'ipaddress_range'")
+			log.Error("[STORE] Unable to Insert row in Table 'ipaddress_range'")
 		}
 	}
 }
@@ -103,7 +90,7 @@ func (store *DBStore) DisplayIPRecords() {
 	if err != nil {
 		log.Debugf(" err : ", err)
 	}
-	log.Debugf("Column names: %v", columns)
+	log.Debugf("[STORE] Column names: %v", columns)
 	defer row.Close()
 	for row.Next() {
 		var id int
@@ -111,7 +98,7 @@ func (store *DBStore) DisplayIPRecords() {
 		var status int
 		var cidr string
 		row.Scan(&id, &ipaddress, &status, &cidr)
-		log.Debugf("ipaddress_range: %v\t %v\t%v\t%v", id, ipaddress, status, cidr)
+		log.Debugf("[STORE] ipaddress_range: %v\t %v\t%v\t%v", id, ipaddress, status, cidr)
 	}
 }
 
@@ -126,7 +113,7 @@ func (store *DBStore) AllocateIP(cidr string) string {
 	)
 	err := store.db.QueryRow(queryString).Scan(&ipaddress, &id)
 	if err != nil {
-		log.Infof("No Available IP Addresses to Allocate: %v", err)
+		log.Infof("[STORE] No Available IP Addresses to Allocate: %v", err)
 		return ""
 	}
 
@@ -135,9 +122,35 @@ func (store *DBStore) AllocateIP(cidr string) string {
 
 	_, err = statement.Exec(id)
 	if err != nil {
-		log.Errorf("Unable to update row in Table 'ipaddress_range': %v", err)
+		log.Errorf("[STORE] Unable to update row in Table 'ipaddress_range': %v", err)
 	}
 	return ipaddress
+}
+
+func (store *DBStore) MarkIPAsAllocated(cidr, ipAddr string) bool {
+	var id int
+
+	queryString := fmt.Sprintf(
+		"SELECT id FROM ipaddress_range where status=%d AND cidr=\"%s\" AND ipaddress=\"%s\" order by id ASC limit 1",
+		AVAILABLE,
+		cidr,
+		ipAddr,
+	)
+	err := store.db.QueryRow(queryString).Scan(&id)
+	if err != nil {
+		log.Infof("[STORE] No Available IP Addresses to Allocate: %v", err)
+		return false
+	}
+
+	allocateIPSql := fmt.Sprintf("UPDATE ipaddress_range set status = %d where id = ?", ALLOCATED)
+	statement, _ := store.db.Prepare(allocateIPSql)
+
+	_, err = statement.Exec(id)
+	if err != nil {
+		log.Errorf("[STORE] Unable to update row in Table 'ipaddress_range': %v", err)
+		return false
+	}
+	return true
 }
 
 func (store *DBStore) GetIPAddress(hostname string) string {
@@ -149,7 +162,7 @@ func (store *DBStore) GetIPAddress(hostname string) string {
 	)
 	err := store.db.QueryRow(queryString).Scan(&ipaddress)
 	if err != nil {
-		log.Infof("No A record with Host: %v", hostname)
+		log.Infof("[STORE] No A record with Host: %v", hostname)
 		return ""
 	}
 	return ipaddress
@@ -161,7 +174,7 @@ func (store *DBStore) ReleaseIP(ip string) {
 
 	_, err := statement.Exec(ip)
 	if err != nil {
-		log.Errorf("Unable to update row in Table 'ipaddress_range': %v", err)
+		log.Errorf("[STORE] Unable to update row in Table 'ipaddress_range': %v", err)
 	}
 }
 
@@ -172,7 +185,7 @@ func (store *DBStore) CreateARecord(hostname, ipAddr string) bool {
 
 	_, err := statement.Exec(ipAddr, hostname)
 	if err != nil {
-		log.Error("Unable to Insert row in Table 'a_records'")
+		log.Error("[STORE] Unable to Insert row in Table 'a_records'")
 		return false
 	}
 	return true
@@ -185,7 +198,7 @@ func (store *DBStore) DeleteARecord(hostname, ipAddr string) bool {
 
 	_, err := statement.Exec(ipAddr, hostname)
 	if err != nil {
-		log.Error("Unable to Delete row from Table 'a_records'")
+		log.Error("[STORE] Unable to Delete row from Table 'a_records'")
 		return false
 	}
 	return true

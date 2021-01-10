@@ -20,7 +20,7 @@ func NewIPAMManager(params IPAMManagerParams) *IPAMManager {
 	provParams := provider.Params{Range: params.Range}
 	prov := provider.NewProvider(provParams)
 	if prov == nil {
-		log.Error("Unable to create Provider")
+		log.Error("[IPMG] Unable to create Provider")
 		return nil
 	}
 	return &IPAMManager{provider: prov}
@@ -29,7 +29,7 @@ func NewIPAMManager(params IPAMManagerParams) *IPAMManager {
 // Creates an A record
 func (ipMgr *IPAMManager) CreateARecord(hostname, ipAddr string) bool {
 	if !isIPV4Addr(ipAddr) {
-		log.Errorf("Invalid IP Address Provided")
+		log.Errorf("[IPMG] Invalid IP Address Provided")
 		return false
 	}
 	// TODO: Validate hostname to be a proper dns hostname
@@ -40,7 +40,7 @@ func (ipMgr *IPAMManager) CreateARecord(hostname, ipAddr string) bool {
 // Deletes an A record and releases the IP address
 func (ipMgr *IPAMManager) DeleteARecord(hostname, ipAddr string) {
 	if !isIPV4Addr(ipAddr) {
-		log.Errorf("Invalid IP Address Provided")
+		log.Errorf("[IPMG] Invalid IP Address Provided")
 		return
 	}
 	// TODO: Validate hostname to be a proper dns hostname
@@ -56,17 +56,22 @@ func (ipMgr *IPAMManager) GetIPAddress(hostname string) string {
 func (ipMgr *IPAMManager) GetNextIPAddress(cidr string) string {
 	_, _, err := net.ParseCIDR(cidr)
 	if err != nil {
-		log.Debugf("Invalid CIDR Provided: %v", cidr)
+		log.Debugf("[IPMG] Invalid CIDR Provided: %v", cidr)
 		return ""
 	}
 	return ipMgr.provider.GetNextAddr(cidr)
+}
+
+// Allocates this particular ip from the CIDR
+func (ipMgr *IPAMManager) AllocateIPAddress(cidr, ipAddr string) bool {
+	return ipMgr.provider.AllocateIPAddress(cidr, ipAddr)
 }
 
 // Releases an IP address
 func (ipMgr *IPAMManager) ReleaseIPAddress(ipAddr string) {
 
 	if !isIPV4Addr(ipAddr) {
-		log.Errorf("Invalid IP Address Provided")
+		log.Errorf("[IPMG] Invalid IP Address Provided")
 		return
 	}
 	ipMgr.provider.ReleaseAddr(ipAddr)

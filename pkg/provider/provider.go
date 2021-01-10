@@ -43,7 +43,7 @@ func parseIPRange(ipRange string) []string {
 	if len(ipRange) == 0 {
 		return nil
 	}
-	log.Debugf("Parsing IP Ranges: %v", ipRange)
+	log.Debugf("[PROV] Parsing IP Ranges: %v", ipRange)
 	ranges := strings.Split(ipRange, ",")
 	var ipRanges []string
 	for _, ipRange := range ranges {
@@ -56,28 +56,38 @@ func parseIPRange(ipRange string) []string {
 func (prov *IPAMProvider) generateExternalIPAddr(ipRnages []string) {
 	var startRangeIP, endRangeIP, Subnet string
 	if len(ipRnages) == 0 {
-		log.Fatal("No IP range provided")
+		log.Fatal("[PROV] No IP range provided")
 	}
 
 	for _, ip := range ipRnages {
 		ip = strings.Trim(ip, "\"")
 		ipRangeArr := strings.Split(ip, "-")
 
+		if len(ipRangeArr) != 2 {
+			log.Errorf("Invalid IP Range Provided: %v", ip)
+			continue
+		}
+
 		//checking the cidr of both the IPS if same then proceed otherwise error log
 		ipRangeStart := strings.Split(ipRangeArr[0], "/")
 		ipRangeEnd := strings.Split(ipRangeArr[1], "/")
 
+		if len(ipRangeStart) != 2 || len(ipRangeEnd) != 2 {
+			log.Errorf("Invalid IP Range Provided: %v", ip)
+			continue
+		}
+
 		if ipRangeStart[1] != ipRangeEnd[1] {
-			log.Debugf("IPv4 Range Subnet mask is inconsistent")
+			log.Debugf("[PROV] IPv4 Range Subnet mask is inconsistent")
 			continue
 		}
 		switch ipv4or6(ip) {
 		case IPV6:
-			log.Debugf("IPv6 is not supported")
+			log.Debugf("[PROV] IPv6 is not supported")
 		case IPV4:
 			break
 		default:
-			log.Debugf("Invalid IP Address provided in the range")
+			log.Debugf("[PROV] Invalid IP Address provided in the range")
 		}
 
 		Subnet = ipRangeStart[1]
@@ -85,24 +95,24 @@ func (prov *IPAMProvider) generateExternalIPAddr(ipRnages []string) {
 		startRangeIP = ipRangeStart[0]
 		endRangeIP = ipRangeEnd[0]
 
-		log.Debugf("IP Pool: %v to %v/%v", startRangeIP, endRangeIP, Subnet)
+		log.Debugf("[PROV] IP Pool: %v to %v/%v", startRangeIP, endRangeIP, Subnet)
 
 		//endip validation
 		ipEnd, ipNet, err := net.ParseCIDR(endRangeIP + "/" + Subnet)
 		if err != nil {
-			log.Debugf("Parsing err :  ", err)
+			log.Debugf("[PROV] Parsing err :  ", err)
 			continue
 		}
 
 		maskSize, _ := ipNet.Mask.Size()
 		cidr := fmt.Sprintf("%s/%v", ipNet.IP.String(), maskSize)
 		prov.cidrs[cidr] = true
-		log.Debugf("Processed CIDR: %v", cidr)
+		log.Debugf("[PROV] Processed CIDR: %v", cidr)
 
 		//startip validation
 		ipStart, ipnetStart, err := net.ParseCIDR(startRangeIP + "/" + Subnet)
 		if err != nil {
-			log.Debugf("Parsing err : ", err)
+			log.Debugf("[PROV] Parsing err : ", err)
 			continue
 		}
 		ips := []string{}
@@ -140,21 +150,21 @@ func ipv4or6(s string) string {
 			return IPV6
 		}
 	}
-	return "Invalid Address"
+	return "[PROV] Invalid Address"
 
 }
 
 // Creates an A record
 func (prov *IPAMProvider) CreateARecord(hostname, ipAddr string) bool {
 	prov.store.CreateARecord(hostname, ipAddr)
-	log.Debugf("Created 'A' Record. Host:%v, IP:%v", hostname, ipAddr)
+	log.Debugf("[PROV] Created 'A' Record. Host:%v, IP:%v", hostname, ipAddr)
 	return true
 }
 
 // Deletes an A record and releases the IP address
 func (prov *IPAMProvider) DeleteARecord(hostname, ipAddr string) {
 	prov.store.DeleteARecord(hostname, ipAddr)
-	log.Debugf("Deleted 'A' Record. Host:%v, IP:%v", hostname, ipAddr)
+	log.Debugf("[PROV] Deleted 'A' Record. Host:%v, IP:%v", hostname, ipAddr)
 }
 
 func (prov *IPAMProvider) GetIPAddress(hostname string) string {
@@ -164,10 +174,33 @@ func (prov *IPAMProvider) GetIPAddress(hostname string) string {
 // Gets and reserves the next available IP address
 func (prov *IPAMProvider) GetNextAddr(cidr string) string {
 	if _, ok := prov.cidrs[cidr]; !ok {
-		log.Debugf("Unsupported CIDR: %v", cidr)
+		log.Debugf("[PROV] Unsupported CIDR: %v", cidr)
 		return ""
 	}
 	return prov.store.AllocateIP(cidr)
+}
+
+// Marks an IP address as allocated if it belongs to that CIDR
+func (prov *IPAMProvider) AllocateIPAddress(cidr, ipAddr string) bool {
+	if _, ok := prov.cidrs[cidr]; !ok {
+		log.Debugf("[PROV] Unsupported CIDR: %v", cidr)
+		return false
+	}
+
+	_, ipNet, err := net.ParseCIDR(cidr)
+	if err != nil {
+		log.Debugf("[PROV] Parsing CIDR error : ", err)
+		return false
+	}
+	ip := net.ParseIP(ipAddr)
+	if ip == nil {
+		log.Debugf("[PROV] Parsing IP error")
+		return false
+	}
+	if ipNet.Contains(ip) {
+		return prov.store.MarkIPAsAllocated(cidr, ipAddr)
+	}
+	return false
 }
 
 // Releases an IP address

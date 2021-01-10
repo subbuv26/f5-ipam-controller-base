@@ -12,6 +12,8 @@ type Manager interface {
 	GetIPAddress(hostname string) string
 	// Gets and reserves the next available IP address
 	GetNextIPAddress(cidr string) string
+	// Allocates this particular ip from the CIDR
+	AllocateIPAddress(cidr, ipAddr string) bool
 	// Releases an IP address
 	ReleaseIPAddress(ipAddr string)
 }
@@ -26,11 +28,11 @@ type Params struct {
 func NewManager(params Params) Manager {
 	switch params.Provider {
 	case F5IPAMProvider:
-		log.Debugf("Creating Manager with Provider: %v", F5IPAMProvider)
+		log.Debugf("[MGR] Creating Manager with Provider: %v", F5IPAMProvider)
 		f5IPAMParams := IPAMManagerParams{Range: params.Range}
 		return NewIPAMManager(f5IPAMParams)
 	default:
-		log.Errorf("Unknown Provider: %v", params.Provider)
+		log.Errorf("[MGR] Unknown Provider: %v", params.Provider)
 	}
 	return nil
 }
