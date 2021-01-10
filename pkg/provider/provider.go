@@ -63,9 +63,19 @@ func (prov *IPAMProvider) generateExternalIPAddr(ipRnages []string) {
 		ip = strings.Trim(ip, "\"")
 		ipRangeArr := strings.Split(ip, "-")
 
+		if len(ipRangeArr) != 2 {
+			log.Errorf("Invalid IP Range Provided: %v", ip)
+			continue
+		}
+
 		//checking the cidr of both the IPS if same then proceed otherwise error log
 		ipRangeStart := strings.Split(ipRangeArr[0], "/")
 		ipRangeEnd := strings.Split(ipRangeArr[1], "/")
+
+		if len(ipRangeStart) != 2 || len(ipRangeEnd) != 2 {
+			log.Errorf("Invalid IP Range Provided: %v", ip)
+			continue
+		}
 
 		if ipRangeStart[1] != ipRangeEnd[1] {
 			log.Debugf("[PROV] IPv4 Range Subnet mask is inconsistent")

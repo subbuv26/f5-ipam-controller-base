@@ -96,6 +96,11 @@ func verifyArgs() error {
 	*orch = strings.ToLower(*orch)
 	*provider = strings.ToLower(*provider)
 
+	if len(*iprange) == 0 && *provider == DefaultProvider {
+		return fmt.Errorf("IP Range not provider for Provider: %v", DefaultProvider)
+	}
+	*iprange = strings.Trim(*iprange, "\"")
+	*iprange = strings.Trim(*iprange, "'")
 	return nil
 }
 
