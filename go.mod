@@ -1,4 +1,4 @@
-module github.com/f5devcentral/f5-ipam-controller
+module github.com/subbuv26/f5-ipam-controller
 
 go 1.15
 
